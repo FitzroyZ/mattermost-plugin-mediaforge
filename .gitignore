@@ -1,0 +1,9 @@
+.commitmsg
+dist/
+server/dist/
+webapp/dist/
+
+# Editor and OS cruft
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,272 @@
+{
+    "id": "com.github.berzionline.mediaforge",
+    "name": "MediaForge",
+    "description": "Compresses images and videos during upload, before they are committed to the file store.",
+    "homepage_url": "https://github.com/BerziOnline/mattermost-plugin-mediaforge",
+    "support_url": "https://github.com/BerziOnline/mattermost-plugin-mediaforge/issues",
+    "release_notes_url": "https://github.com/BerziOnline/mattermost-plugin-mediaforge/releases/tag/v0.1.1",
+    "version": "0.1.1",
+    "min_server_version": "9.0.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Files are shrunk while they are uploaded, so the small version is what reaches the server. Changes apply to the next upload; no restart needed.\n\nAn invalid value is ignored, the standard value is used, and a warning naming the setting goes to the server log.",
+        "footer": "Files that are already small, formats that cannot be read, and anything that fails are stored exactly as sent — compression never makes an upload fail.\n\n[Open the MediaForge report](/plugins/com.github.berzionline.mediaforge/report) for what was saved, by day and by type. Administrators only.",
+        "settings": [],
+        "sections": [
+            {
+                "key": "health",
+                "title": "Status",
+                "subtitle": "What MediaForge can do on this server right now",
+                "settings": [
+                    {
+                        "key": "HealthReport",
+                        "display_name": "System health",
+                        "type": "custom",
+                        "help_text": "Whether ffmpeg is present and what the plugin can currently do. Without ffmpeg, images still work; video and voice messages do not."
+                    }
+                ]
+            },
+            {
+                "key": "images",
+                "title": "Images",
+                "subtitle": "Photos and screenshots, shrunk as they are uploaded",
+                "settings": [
+                    {
+                        "key": "EnableImageCompression",
+                        "display_name": "Compress images",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Shrinks JPEG and PNG images as they are uploaded. Off means every image is stored exactly as sent.",
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "MaxEdgeLength",
+                        "display_name": "Longest edge (pixels)",
+                        "type": "number",
+                        "default": 2560,
+                        "placeholder": "2560",
+                        "help_text": "Images larger than this are scaled down; the aspect ratio is kept. 1920 suits normal viewing. Allowed: 100–10000."
+                    },
+                    {
+                        "key": "JpegQuality",
+                        "display_name": "Photo quality (JPEG)",
+                        "type": "number",
+                        "default": 85,
+                        "placeholder": "85",
+                        "help_text": "Higher means better quality and larger files. 82 is close to indistinguishable from the original. Allowed: 1–100."
+                    },
+                    {
+                        "key": "MinSizeToProcessKB",
+                        "display_name": "Only compress files above (KB)",
+                        "type": "number",
+                        "default": 512,
+                        "placeholder": "512",
+                        "help_text": "Files below this are stored unchanged. Compressing a small image often makes it bigger. Allowed: 0–100000."
+                    },
+                    {
+                        "key": "ImageMetadata",
+                        "display_name": "Photo information (EXIF)",
+                        "type": "radio",
+                        "default": "preserve",
+                        "options": [
+                            {
+                                "display_name": "Keep — camera details, date and location stay in the file",
+                                "value": "preserve"
+                            },
+                            {
+                                "display_name": "Remove — strip all hidden information, including location",
+                                "value": "strip"
+                            }
+                        ],
+                        "help_text": "Photos carry the camera, the date and often the location they were taken (GPS). Removing it is smaller and better for privacy; keeping it preserves orientation and copyright."
+                    },
+                    {
+                        "key": "MaxConcurrentImageJobs",
+                        "display_name": "Compress this many images at the same time",
+                        "type": "number",
+                        "default": 4,
+                        "placeholder": "4",
+                        "help_text": "How many images compress at once. Each one needs memory for the full picture, so 4 is recommended. Above the limit, images are stored as sent rather than queued. Allowed: 1–256."
+                    }
+                ]
+            },
+            {
+                "key": "video",
+                "title": "Video",
+                "subtitle": "Converting videos — needs ffmpeg",
+                "settings": [
+                    {
+                        "key": "EnableVideoCompression",
+                        "display_name": "Compress videos",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Converts videos as they are uploaded, so the smaller version is what reaches the server. Needs ffmpeg installed. If a conversion fails, the upload is refused rather than stored unconverted. Off means every video is stored exactly as sent.",
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "MaxVideoHeight",
+                        "display_name": "Largest video height (pixels)",
+                        "type": "number",
+                        "default": 1080,
+                        "placeholder": "1080",
+                        "help_text": "Taller videos are scaled down to this height; the aspect ratio is kept. 1080 is full HD and suits normal viewing. Allowed: 240–4320."
+                    },
+                    {
+                        "key": "VideoCodec",
+                        "display_name": "Video format",
+                        "type": "radio",
+                        "default": "h264",
+                        "options": [
+                            {
+                                "display_name": "H.264 in MP4 — plays on every device (recommended)",
+                                "value": "h264"
+                            },
+                            {
+                                "display_name": "H.265 in MP4 — about 30% smaller, but not every device plays it",
+                                "value": "h265"
+                            },
+                            {
+                                "display_name": "AV1 in WebM — the smallest files, but only recent devices play them",
+                                "value": "av1"
+                            }
+                        ],
+                        "help_text": "**H.264** plays everywhere: iPhone, Android, Windows, Safari, Chrome, Firefox. Choose it unless you have a reason not to.\n\n**H.265** is about a third smaller, but does not play in Firefox, in Chrome on most machines, or on Android before ~2017. Needs the HEVC extension on Windows.\n\n**AV1** is smallest, but does not play on iPhone before iOS 17 or on most smart TVs, and converts much more slowly.\n\nStored videos keep the format they were saved in — test before switching."
+                    },
+                    {
+                        "key": "VideoCRF",
+                        "display_name": "Video quality",
+                        "type": "number",
+                        "default": 23,
+                        "placeholder": "23",
+                        "help_text": "Picture quality of the converted video. Lower means better quality and larger files, higher means smaller and softer. 23 is a good balance. Allowed: 0–51."
+                    },
+                    {
+                        "key": "AudioBitrateKbps",
+                        "display_name": "Sound quality (kbit/s)",
+                        "type": "number",
+                        "default": 128,
+                        "placeholder": "128",
+                        "help_text": "Sound quality of the converted video. 128 is fine for speech and music; below 64 speech starts to sound thin. Allowed: 8–512."
+                    },
+                    {
+                        "key": "VideoTimeoutSeconds",
+                        "display_name": "Give up converting after (seconds)",
+                        "type": "number",
+                        "default": 240,
+                        "placeholder": "240",
+                        "help_text": "A conversion running longer than this is abandoned and the video is stored exactly as sent. Keep it below the server's own write timeout, or the upload breaks before this takes effect. Allowed: 10–86400."
+                    },
+                    {
+                        "key": "MaxVideoSizeMB",
+                        "display_name": "Do not convert videos larger than (MB)",
+                        "type": "number",
+                        "default": 2048,
+                        "placeholder": "2048",
+                        "help_text": "Videos above this size are stored as sent without being converted, because very large files take disproportionately long. Allowed: 1–100000."
+                    },
+                    {
+                        "key": "MaxConcurrentVideoJobs",
+                        "display_name": "Convert this many videos at the same time",
+                        "type": "number",
+                        "default": 1,
+                        "placeholder": "1",
+                        "help_text": "How many videos convert at once. One video already uses every processor core, so a higher value makes the server slow for everyone without finishing sooner; 1 is recommended. Above the limit, videos are stored as sent. Allowed: 1–64."
+                    }
+                ]
+            },
+            {
+                "key": "feedback",
+                "title": "What people see",
+                "subtitle": "How a compressed file is presented in the channel",
+                "settings": [
+                    {
+                        "key": "SizeNoteStyle",
+                        "display_name": "Size note on the post",
+                        "type": "radio",
+                        "default": "footer",
+                        "options": [
+                            {
+                                "display_name": "1 — A line under the message, in italics",
+                                "value": "line"
+                            },
+                            {
+                                "display_name": "2 — Just the two sizes, in a small box",
+                                "value": "compact"
+                            },
+                            {
+                                "display_name": "3 — A separate block with a green bar",
+                                "value": "block"
+                            },
+                            {
+                                "display_name": "4 — A small, quiet footer (recommended)",
+                                "value": "footer"
+                            },
+                            {
+                                "display_name": "5 — No note at all",
+                                "value": "none"
+                            }
+                        ],
+                        "help_text": "Whether the post says how much a file shrank. The note is part of the message, so it shows on phones too.\n\n![Option 1](/plugins/com.github.berzionline.mediaforge/images/note-1.png)\n![Option 2](/plugins/com.github.berzionline.mediaforge/images/note-2.png)\n![Option 3](/plugins/com.github.berzionline.mediaforge/images/note-3.png)\n![Option 4](/plugins/com.github.berzionline.mediaforge/images/note-4.png)\n![Option 5](/plugins/com.github.berzionline.mediaforge/images/note-5.png)"
+                    },
+                    {
+                        "key": "MarkCompressedFilenames",
+                        "display_name": "Mark compressed files in their filename",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Adds a marker to the filename of files that were made smaller, so the original and the compressed copy are told apart on download."
+                    }
+                ]
+            },
+            {
+                "key": "voice",
+                "title": "Voice messages",
+                "subtitle": "Recording and converting speech — needs ffmpeg",
+                "settings": [
+                    {
+                        "key": "EnableVoiceMessages",
+                        "display_name": "Voice messages",
+                        "type": "bool",
+                        "default": true,
+                        "help_text": "Adds a microphone button for recording voice messages. Needs ffmpeg. Recordings are stored as ordinary audio attachments.",
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "MaxVoiceSeconds",
+                        "display_name": "Longest voice message (seconds)",
+                        "type": "number",
+                        "default": 600,
+                        "help_text": "Longer recordings are refused before anything is stored, measured on what was spoken. Allowed: 5–3600.",
+                        "placeholder": "600"
+                    },
+                    {
+                        "key": "TrimVoiceSilence",
+                        "display_name": "Shorten long pauses in voice messages",
+                        "type": "bool",
+                        "default": false,
+                        "help_text": "Shortens the silent gaps inside a recording. This removes part of what was said and cannot be undone, which is why it is off by default. Pauses are shortened rather than deleted, and the start is never trimmed.",
+                        "placeholder": ""
+                    },
+                    {
+                        "key": "VoiceChannels",
+                        "display_name": "Channels with voice messages",
+                        "type": "text",
+                        "default": "",
+                        "help_text": "Empty means everywhere. Otherwise list channels by URL name, display name or ID, separated by commas. Elsewhere the microphone is hidden.",
+                        "placeholder": "town-square, Team Updates"
+                    }
+                ]
+            }
+        ]
+    }
+}

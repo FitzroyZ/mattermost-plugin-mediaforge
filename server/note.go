@@ -236,13 +236,16 @@ func (p *MediaForgePlugin) MessageWillBePosted(_ *plugin.Context, post *model.Po
 func (p *MediaForgePlugin) MessageWillBeUpdated(
 	_ *plugin.Context, newPost, oldPost *model.Post,
 ) (*model.Post, string) {
+	// Unlike MessageWillBePosted, a nil post here is a REJECTION: Mattermost
+	// answers 400 "Post rejected by plugin." and keeps the old message. Every
+	// edit we do not need to touch must therefore hand back newPost itself.
 	if newPost == nil || oldPost == nil {
-		return nil, ""
+		return newPost, ""
 	}
 
 	records := recordsFromProps(oldPost)
 	if len(records) == 0 {
-		return nil, ""
+		return newPost, ""
 	}
 
 	updated := newPost.Clone()

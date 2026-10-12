@@ -9,6 +9,9 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
 	xdraw "golang.org/x/image/draw"
@@ -462,11 +465,71 @@ func safeToDecode(width, height int) bool {
 	return width <= maxDecodePixels/height
 }
 
+// isHEICImage reports whether the header looks like an HEIC/HEIF container.
+func isHEICImage(head []byte) bool {
+	if len(head) < 16 || !bytes.Equal(head[4:8], []byte("ftyp")) {
+		return false
+	}
+	brand := string(head[8:12])
+	switch brand {
+	case "heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "heif", "heif":
+		return true
+	default:
+		return false
+	}
+}
+
 // isCompressibleImage reports whether the header looks like a format this
 // slice handles. Only JPEG and PNG qualify: GIF is frequently animated (which
 // a still re-encode would destroy) and SVG is not a raster image at all.
 func isCompressibleImage(head []byte) bool {
-	return bytes.HasPrefix(head, jpegMagic) || bytes.HasPrefix(head, pngMagic)
+	return bytes.HasPrefix(head, jpegMagic) || bytes.HasPrefix(head, pngMagic) || isHEICImage(head)
+}
+
+// convertHEICToPNG transcodes HEIC/HEIF to a PNG using ffmpeg, then reuses the
+// normal "smaller output wins" logic.
+func convertHEICToPNG(original []byte, cfg configuration) (processOutcome, []byte) {
+	var outcome processOutcome
+	if cfg.tools.FFmpegPath == "" || !cfg.EnableHEICCompression {
+		return outcome, nil
+	}
+
+	dir, err := os.MkdirTemp("", "mediaforge-heic-")
+	if err != nil {
+		return outcome, nil
+	}
+	defer os.RemoveAll(dir)
+
+	inputPath := filepath.Join(dir, "source.heic")
+	outputPath := filepath.Join(dir, "converted.png")
+
+	if err := os.WriteFile(inputPath, original, 0o600); err != nil {
+		return outcome, nil
+	}
+
+	args := []string{
+		"-y",
+		"-v", "error",
+		"-i", inputPath,
+		"-frames:v", "1",
+		"-vf", fmt.Sprintf("scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease'", cfg.MaxEdgeLength, cfg.MaxEdgeLength),
+		outputPath,
+	}
+	cmd := exec.Command(cfg.tools.FFmpegPath, args...)
+	if err := cmd.Run(); err != nil {
+		return outcome, nil
+	}
+
+	encoded, err := os.ReadFile(outputPath)
+	if err != nil || len(encoded) == 0 {
+		return outcome, nil
+	}
+	if len(encoded) >= len(original) {
+		return outcome, nil
+	}
+
+	outcome.reEncoded = true
+	return outcome, encoded
 }
 
 // compressImage decodes, resizes and re-encodes one buffered image.
@@ -480,6 +543,9 @@ func compressImage(original []byte, cfg configuration) (processOutcome, []byte) 
 
 	imgCfg, format, err := image.DecodeConfig(bytes.NewReader(original))
 	if err != nil {
+		if isHEICImage(original) {
+			return convertHEICToPNG(original, cfg)
+		}
 		// The magic bytes matched but the file is not a usable image.
 		return outcome, nil
 	}
@@ -491,6 +557,9 @@ func compressImage(original []byte, cfg configuration) (processOutcome, []byte) 
 
 	decoded, _, err := image.Decode(bytes.NewReader(original))
 	if err != nil {
+		if isHEICImage(original) {
+			return convertHEICToPNG(original, cfg)
+		}
 		return outcome, nil
 	}
 

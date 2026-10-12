@@ -1,4 +1,6 @@
 # MediaForge
+** This is a photo or video compress plugin for mattermost** working with 10.12 proven
+
 
 A Mattermost plugin that compresses images and videos **while they are being
 uploaded** — before the file is committed to the file store — and lets people

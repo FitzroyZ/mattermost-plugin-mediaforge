@@ -19,16 +19,16 @@ upload is simply not finished until the compression is.
 
 ## **Contents**
 
-* [Why not a filesystem watcher](https://www.google.com/search?q=%23why-not-a-filesystem-watcher)  
-* [Requirements](https://www.google.com/search?q=%23requirements)  
-* [Installing](https://www.google.com/search?q=%23installing)  
-* [Building from source](https://www.google.com/search?q=%23building-from-source)  
-* [Settings](https://www.google.com/search?q=%23settings)  
-* [The report](https://www.google.com/search?q=%23the-report)  
-* [Known limitations](https://www.google.com/search?q=%23known-limitations)  
-* [Troubleshooting](https://www.google.com/search?q=%23troubleshooting)  
-* [Contributing](https://www.google.com/search?q=%23contributing)  
-* [Licence](https://www.google.com/search?q=%23licence)
+* [Why not a filesystem watcher](#why-not-a-filesystem-watcher)  
+* [Requirements](#requirements)  
+* [Installing](#installing)  
+* [Building from source](#building-from-source)  
+* [Settings](#settings)  
+* [The report](#the-report)  
+* [Known limitations](#known-limitations)  
+* [Troubleshooting](#troubleshooting)  
+* [Contributing](#contributing)  
+* [Licence](#licence)
 
 ## **Why not a filesystem watcher**
 
@@ -43,7 +43,7 @@ theorised:
 >    sizes. The consequences are wrong Content-Length headers, aborted  
 >    downloads and wrong storage statistics.  
 > 2. **It double-compresses.** The watcher also matches Mattermost's own  
->    generated \*\_preview.\* files, which were already encoded at quality 90\.  
+>    generated \*_preview.\* files, which were already encoded at quality 90.  
 >    Re-encoding those is the actual cause of the poor image quality people  
 >    blame on compression in general.  
 > 3. **It cannot hide work in progress.** inotify fires *after* the write  
@@ -53,7 +53,7 @@ theorised:
 
 MediaForge uses the official FileWillBeUploaded hook instead, which runs  
 before the file is stored. The full reasoning, including the parts that were  
-decided against, is in [SPEC.md](https://www.google.com/search?q=SPEC.md).
+decided against, is in [SPEC.md](SPEC.md).
 
 ## **Requirements**
 
@@ -69,8 +69,9 @@ and voice messages need ffmpeg and ffprobe; without them those two
 features switch themselves off and say so in the server log, rather than  
 failing one upload at a time. On Debian and Ubuntu:
 
-Bash  
+```bash
 sudo apt install ffmpeg
+```
 
 **After installing, check the System health panel** at the top of  
 **System Console → Plugins → MediaForge**. It reports what the server itself  
@@ -103,8 +104,9 @@ MediaForge · 11.9 MB → 2.3 MB (80% smaller).
 
 ## **Building from source**
 
-Bash  
+```bash
 make dist
+```
 
 This validates plugin.json, cross-compiles the server binary for Linux,  
 macOS and Windows, assembles the webapp bundle, and writes the installable  
@@ -124,12 +126,14 @@ Two things are worth knowing before running the tests:
 * **go test \-race needs \-timeout 40m.** Under the race detector the server  
   package takes about 27 minutes, past Go's default 10-minute per-package  
   limit. A bare go test \-race reports a timeout panic that reads exactly  
-  like a deadlock and is not one:  
-  Bash  
-  go test ./server \-race \-count=1 \-timeout 40m
+  like a deadlock and is not one:
+
+  ```bash
+  go test ./server -race -count=1 -timeout 40m
+  ```
 
 * **The webapp has no dependencies and is meant to keep it that way.** There  
-  is no npm install, no bundler and no node\_modules: the source is one  
+  is no npm install, no bundler and no node_modules: the source is one  
   file that takes React from the window the way Mattermost publishes it, and  
   the tests run under Node's own test runner. Node 20 or newer works; the  
   make webapp-test target lets the shell expand its glob so that both Node 20  
@@ -137,8 +141,9 @@ Two things are worth knowing before running the tests:
 
 The five preview images in the System Console are generated, not drawn:
 
-Bash  
+```bash
 ./scripts/make-note-previews.sh
+```
 
 It needs chromium or google-chrome and writes server/public/note-1.png  
 through note-5.png. Run it after changing the wording of a note, or the  
@@ -156,9 +161,9 @@ about it.
 | :---- | :---- | :---- |
 | **Compress images** | on | The master switch for images. Off means every image is stored exactly as it was sent and none of the settings below has any effect. |
 | **Longest edge (pixels)** | 2560 | Images larger than this are scaled down until neither side is longer. Smaller images are never enlarged. Below roughly 1000, text in screenshots starts to become hard to read. |
-| **Photo quality (JPEG)** | 85 | How much detail to keep when re-saving a photo, 1 to 100\. 85 is what most people cannot tell apart from the original. Below about 70 the loss shows as blocky patches in skies. PNG files are unaffected — they are always re-saved without loss. |
+| **Photo quality (JPEG)** | 85 | How much detail to keep when re-saving a photo, 1 to 100. 85 is what most people cannot tell apart from the original. Below about 70 the loss shows as blocky patches. |
 | **Only compress files above (KB)** | 512 | Images smaller than this are stored untouched. Small images save almost nothing and can even grow when re-saved. |
-| **Photo information (EXIF)** | Keep | Phone photos usually carry the exact location they were taken at, readable by anyone who downloads the file. **Keep** leaves it in place and keeps colour profiles intact; **Remove** strips all of it. This is a privacy decision, not a storage one. |
+| **Photo information (EXIF)** | Keep | Phone photos usually carry the exact location they were taken at, readable by anyone who downloads the file. **Keep** leaves it in place and keeps colour profiles; **Strip** removes all of it. |
 
 PNG is never converted to JPEG. That would be a lossy, irreversible conversion  
 applied to the one format people choose precisely because it is lossless, so  
@@ -172,11 +177,11 @@ Video compression needs ffmpeg and ffprobe.
 | :---- | :---- | :---- |
 | **Compress videos** | on | The master switch for videos. The sender waits while the conversion runs, which is what stops anybody from opening a half-written file. |
 | **Largest video height (pixels)** | 1080 | Taller videos are scaled down to this; the width follows so nothing is distorted. 720 roughly halves the file again and is hard to tell apart on a phone. |
-| **Video format** | H.264 in MP4 | H.264 plays everywhere. H.265 is about 30% smaller but not every device plays it; AV1 is smaller still and only recent devices play it. Test a newer format with your own team's devices before switching everyone over — a stored video nobody's phone will play cannot be recovered without uploading it again. |
+| **Video format** | H.264 in MP4 | H.264 plays everywhere. H.265 is about 30% smaller but not every device plays it; AV1 is smaller still and only recent devices play it. Test a newer format with your audience first. |
 | **Video quality** | 23 | Counts *downwards*: lower means better picture and a larger file. 18 is practically identical to the source; 28 is visibly softer but fine for screen recordings. |
 | **Sound quality (kbit/s)** | 128 | Sound is a small part of a video file, so lowering this saves much less than lowering the picture quality. |
-| **Give up converting after (seconds)** | 240 | A conversion that runs longer is abandoned and the upload is refused. Keep this a little below your server's **Environment → Web Server → Write Timeout** (300 s by default) — past that point the upload is lost anyway, and the time is spent on a file nobody can receive. |
-| **Do not convert videos larger than (MB)** | 2048 | Videos above this are stored as sent rather than refused. It is a limit on temporary disk space, not on what people may send: each conversion briefly needs about twice the video's size free in the server's temporary directory. |
+| **Give up converting after (seconds)** | 240 | A conversion that runs longer is abandoned and the upload is refused. Keep this a little below your server's **Environment → Web Server → Write Timeout**. |
+| **Do not convert videos larger than (MB)** | 2048 | Videos above this are stored as sent rather than refused. It is a limit on temporary disk space, not on what people may send: each conversion briefly needs space for both the original and the result. |
 
 A video whose conversion fails is **refused**, with a message to the sender.  
 That is deliberate: storing a broken video quietly would be worse.
@@ -187,10 +192,10 @@ Voice messages need ffmpeg and ffprobe.
 
 | Setting | Default | What it does |
 | :---- | :---- | :---- |
-| **Voice messages** | on | Adds a microphone entry to the attachment menu in the web and desktop apps. The recording is converted on the server to .m4a and posted as an ordinary audio attachment, so every client plays it — including the mobile apps, which never load plugin code. |
-| **Longest voice message (seconds)** | 600 | The browser stops recording when it reaches this, so nobody talks past the limit and loses what they said. A longer recording sent by some other client is refused with a message naming both lengths. |
-| **Shorten long pauses in voice messages** | off | Shortens the silent gaps inside a recording while it is converted. Measured on a recording with ordinary pauses: 12.5 s became 8.8 s, at about 7 s of server time for a ten-minute file. **The only setting here that is off by default, and deliberately so:** everything else MediaForge does re-encodes a file, while this removes part of what somebody said and cannot be undone. Pauses are shortened rather than deleted — about four tenths of a second is left standing, so sentences do not run together and nobody sounds breathless — and the start of a recording is never trimmed, so a quietly spoken first word is not clipped. |
-| **Channels with voice messages** | empty | Empty means everywhere. Otherwise list channels by URL name (town-square), display name (Town Square) or ID, separated by commas. Elsewhere the microphone button is not shown, and a recording sent there anyway is stored as an ordinary audio file rather than converted. Nothing is lost either way. |
+| **Voice messages** | on | Adds a microphone entry to the attachment menu in the web and desktop apps. The recording is converted on the server to .m4a and posted as an ordinary audio attachment, so every client plays it. |
+| **Longest voice message (seconds)** | 600 | The browser stops recording when it reaches this, so nobody talks past the limit and loses what they said. A longer recording sent by some other client is refused with a message. |
+| **Shorten long pauses in voice messages** | off | Shortens the silent gaps inside a recording while it is converted. Measured on a recording with ordinary pauses: 12.5 s became 8.8 s, at about 7 s of silence cut to 3 s. |
+| **Channels with voice messages** | empty | Empty means everywhere. Otherwise list channels by URL name (town-square), display name (Town Square) or ID, separated by commas. Elsewhere the microphone does not appear. |
 
 Every voice message carries its playing time on the post, as 🎤 Voice message · 2:05. It is the length of the file that was **stored**, which is  
 what a reader deciding whether to listen actually faces — when pauses have  
@@ -227,12 +232,14 @@ the number is what pairs them.
 **System Console → Plugins → MediaForge**, at the bottom of the settings page:  
 *Open the MediaForge report*. Or directly:
 
-https\://\<your-server\>/plugins/com.github.berzionline.mediaforge/report
+```
+https://<your-server>/plugins/com.github.berzionline.mediaforge/report
+```
 
 It shows how many files were made smaller, how much storage that saved, and  
 what could not be converted — split into images and videos, and day by day.  
 Only system administrators can open it: an ordinary logged-in user gets 401,  
-and someone who is not signed in at all gets 401\.
+and someone who is not signed in at all gets 401.
 
 ## **Known limitations**
 
@@ -274,58 +281,75 @@ names the cause and what to do about it, which is faster than reading logs.
 
 #### **Running Mattermost in Docker (Containerized Deployment)**
 
-Official Mattermost production images (such as mattermost/mattermost-team-edition) are minimal, highly secured non-root/non-shell environments that lack package managers (apt, yum) and standard shell binaries like /bin/sh or utility commands. Attempting direct runtime installation (apt-get) inside the container will result in execution failures (exec: "/bin/sh": stat /bin/sh: no such file or directory or exit status 127).  
-To solve this and ensure a secure, compliant installation of ffmpeg and ffprobe, use a **Multi-stage Docker build** pattern that imports official static binaries into your custom Mattermost image.  
-Create a Dockerfile in your build directory:
+Official Mattermost production images (such as `mattermost/mattermost-team-edition`) are minimal, highly secured non-root/non-shell environments that lack package managers (apt, yum) and standard shell utilities. Installing ffmpeg directly within these containers is not possible.
 
-Dockerfile  
-\# Stage 1: Download official static ffmpeg bundle using Debian builder  
-FROM debian:bookworm-slim AS ffmpeg-builder  
-RUN apt-get update && apt-get install \-y \--no-install-recommends wget xz-utils ca-certificates  
-RUN wget \-O /tmp/ffmpeg.tar.xz https\://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \\  
-    && tar \-xf /tmp/ffmpeg.tar.xz \-C /tmp \\  
-    && mv /tmp/ffmpeg-\*-amd64-static /tmp/ffmpeg
+To solve this and ensure a secure, compliant installation of ffmpeg and ffprobe, use a **Multi-stage Docker build** pattern that imports official static binaries into your custom Mattermost image.
 
-\# Stage 2: Target official Mattermost Team Edition image  
+**Step 1: Create a Dockerfile in your build directory:**
+
+```dockerfile
+# Stage 1: Download official static ffmpeg bundle using Debian builder
+FROM debian:bookworm-slim AS ffmpeg-builder
+RUN apt-get update && apt-get install -y --no-install-recommends wget xz-utils ca-certificates
+RUN wget -O /tmp/ffmpeg.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+    && tar -xf /tmp/ffmpeg.tar.xz -C /tmp \
+    && mv /tmp/ffmpeg-*-amd64-static /tmp/ffmpeg
+
+# Stage 2: Target official Mattermost Team Edition image
 FROM mattermost/mattermost-team-edition:release-10.12
 
-\# Copy standalone static binaries into the execution path  
-COPY \--from=ffmpeg-builder /tmp/ffmpeg/ffmpeg /usr/local/bin/  
-COPY \--from=ffmpeg-builder /tmp/ffmpeg/ffprobe /usr/local/bin/
+# Copy standalone static binaries into the execution path
+COPY --from=ffmpeg-builder /tmp/ffmpeg/ffmpeg /usr/local/bin/
+COPY --from=ffmpeg-builder /tmp/ffmpeg/ffprobe /usr/local/bin/
+```
 
-Build your custom container image by specifying your version arguments (e.g., using mattermost/\${MATTERMOST\_IMAGE}:\${MATTERMOST\_IMAGE\_TAG}\_ffmpeg):
+**Step 2: Build your custom container image:**
 
-Bash  
-docker build \--no-cache \-t mattermost/mattermost-team-edition:10.12\_ffmpeg .
+Specify your version arguments (e.g., `MATTERMOST_IMAGE=mattermost-team-edition` and `MATTERMOST_IMAGE_TAG=10.12`):
 
-Update your docker-compose.yml to point to the freshly built image:
+```bash
+docker build --no-cache -t mattermost/mattermost-team-edition:10.12_ffmpeg .
+```
 
-YAML  
-services:  
-  mattermost:  
-    image: mattermost/mattermost-team-edition:10.12\_ffmpeg  
-    restart: always  
-    container\_name: mattermost  
-    \# ... keep your existing volumes and env vars ...
+**Step 3: Update your docker-compose.yml**
+
+Point to the freshly built image:
+
+```yaml
+services:
+  mattermost:
+    image: mattermost/mattermost-team-edition:10.12_ffmpeg
+    restart: always
+    container_name: mattermost
+    # ... keep your existing volumes and env vars ...
+```
+
+**Step 4: Verify the installation**
 
 Verify that the binary works properly inside the container:
 
-Bash  
-docker exec \-it mattermost ffmpeg \-version
+```bash
+docker exec -it mattermost ffmpeg -version
+```
+
+**Troubleshooting**
 
 Almost always ffmpeg or ffprobe is missing from the server's PATH.  
 MediaForge checks for both whenever its settings are applied and writes a  
 warning to the server log naming what it could not find:
 
-MediaForge: video compression is switched on, but ffmpeg and ffprobe not found  
-in the server's PATH, so video compression is switched off and videos are  
-stored exactly as they were sent. Install ffmpeg and ffprobe on the server and  
+```
+MediaForge: video compression is switched on, but ffmpeg and ffprobe not found
+in the server's PATH, so video compression is switched off and videos are
+stored exactly as they were sent. Install ffmpeg and ffprobe on the server and
 save this page again.
+```
 
 After building and starting the customized image, **press Save on the MediaForge settings page**. The lookup  
 runs every time the settings are applied, so saving is enough — the plugin does  
-not need to be disabled and re-enabled, and the server does not need a restart.  
-The second possibility is the settings rather than the toolchain: **Compress videos** switched off, or the video being larger than **Do not convert videos larger than**, in which case it is stored as sent on purpose.
+not need to be disabled and re-enabled, and the server does not need a restart.
+
+The second possibility is the settings rather than the toolchain: **Compress videos** switched off, or the video being larger than **Do not convert videos larger than**, in which case it is stored as sent.
 
 ### **There is no microphone button**
 
@@ -347,11 +371,13 @@ Work through these in order:
 You can ask the server what it answers for a given channel, signed in as any  
 user:
 
-GET /plugins/com.github.berzionline.mediaforge/voice/settings?channel\_id=\<id\>  
-{"enabled":true,"name\_prefix":"mediaforge-voice-","max\_seconds":600}
+```
+GET /plugins/com.github.berzionline.mediaforge/voice/settings?channel_id=<id>
+{"enabled":true,"name_prefix":"mediaforge-voice-","max_seconds":600}
+```
 
-enabled: false with a name\_prefix present means the feature works but not  
-in that channel. No name\_prefix at all means the server cannot do voice  
+`enabled: false` with a `name_prefix` present means the feature works but not  
+in that channel. No `name_prefix` at all means the server cannot do voice  
 messages — back to ffmpeg.
 
 ### **A video is not getting smaller**
@@ -404,7 +430,7 @@ straight from a phone.
 
 Issues and pull requests are welcome at  
 [BerziOnline/mattermost-plugin-mediaforge](https://github.com/BerziOnline/mattermost-plugin-mediaforge).  
-Please read [SPEC.md](https://www.google.com/search?q=SPEC.md) first. It records the design decisions and the  
+Please read [SPEC.md](SPEC.md) first. It records the design decisions and the  
 measurements behind them, including the alternatives that were rejected and  
 why, so they do not have to be re-argued per pull request.  
 Two conventions the codebase holds to:
@@ -413,8 +439,8 @@ Two conventions the codebase holds to:
   the upload path of every file, so behaviour that is not pinned by a test is  
   behaviour nobody will notice breaking.  
 * **All code, comments and user-visible text are in English**, and the tests  
-  in server/language\_test.go enforce the last of those.
+  in server/language_test.go enforce the last of those.
 
 ## **Licence**
 
-[Apache License 2.0](https://www.google.com/search?q=LICENSE)
+[Apache License 2.0](LICENSE)
